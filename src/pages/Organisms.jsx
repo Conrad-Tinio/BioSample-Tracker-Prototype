@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { KINGDOMS } from '../data/mockData';
@@ -63,12 +64,25 @@ export default function Organisms() {
   const { organisms, samples, addOrganism, updateOrganism, deleteOrganism } = useData();
   const [modal, setModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [viewOrganismId, setViewOrganismId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterKingdom, setFilterKingdom] = useState('');
 
   const countByOrganism = samples.reduce((acc, s) => {
     acc[s.organismId] = (acc[s.organismId] || 0) + 1;
     return acc;
   }, {});
+
+  const filteredOrganisms = organisms.filter((o) => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || [o.scientificName, o.commonName, o.taxonomyId].some((v) => String(v ?? '').toLowerCase().includes(q));
+    const matchKingdom = !filterKingdom || o.kingdom === filterKingdom;
+    return matchSearch && matchKingdom;
+  });
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterKingdom('');
+  };
 
   const handleSave = (data) => {
     if (modal === 'new') addOrganism(data);
@@ -95,6 +109,30 @@ export default function Organisms() {
           </button>
         )}
       </div>
+      <div className="bg-white rounded-xl border border-mint-100 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap gap-3 items-center">
+          <input
+            type="text"
+            placeholder="Search by scientific name, common name, or taxonomy ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-mint-500 focus:border-mint-500 flex-1 min-w-[200px]"
+          />
+          <select
+            value={filterKingdom}
+            onChange={(e) => setFilterKingdom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-mint-500"
+          >
+            <option value="">All Kingdoms</option>
+            {KINGDOMS.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          <button type="button" onClick={clearFilters} className="text-sm text-mint-600 hover:text-mint-800 font-medium">
+            Clear Filters
+          </button>
+        </div>
+      </div>
       <div className="bg-white rounded-xl border border-mint-100 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-mint-50 border-b border-mint-100">
@@ -109,7 +147,7 @@ export default function Organisms() {
             </tr>
           </thead>
           <tbody>
-            {organisms.map((o) => (
+            {filteredOrganisms.map((o) => (
               <tr key={o.id} className="border-b border-mint-50 hover:bg-mint-50/50">
                 <td className="py-2 px-4">{o.id}</td>
                 <td className="py-2 px-4 font-medium">{o.scientificName}</td>
@@ -119,13 +157,12 @@ export default function Organisms() {
                 <td className="py-2 px-4">{countByOrganism[o.id] ?? 0}</td>
                 <td className="py-2 px-4">
                   <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setViewOrganismId(viewOrganismId === o.id ? null : o.id)}
+                    <Link
+                      to={`/organisms/${o.id}`}
                       className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                     >
                       View
-                    </button>
+                    </Link>
                     {canManageOrganisms && (
                       <>
                         <button
@@ -150,47 +187,10 @@ export default function Organisms() {
             ))}
           </tbody>
         </table>
+        {filteredOrganisms.length === 0 && (
+          <p className="py-8 text-center text-gray-500">No organisms match your filters.</p>
+        )}
       </div>
-
-      {viewOrganismId && (() => {
-        const o = organisms.find((org) => org.id === viewOrganismId);
-        if (!o) return null;
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewOrganismId(null)}>
-            <div className="bg-white rounded-xl border border-mint-100 shadow-xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Organism Details</h2>
-                <button
-                  type="button"
-                  onClick={() => setViewOrganismId(null)}
-                  className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Close
-                </button>
-              </div>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div><dt className="text-gray-500">Organism ID</dt><dd className="font-medium">{o.id}</dd></div>
-                <div><dt className="text-gray-500">Scientific Name</dt><dd className="font-medium">{o.scientificName}</dd></div>
-                <div><dt className="text-gray-500">Common Name</dt><dd>{o.commonName || '—'}</dd></div>
-                <div><dt className="text-gray-500">Taxonomy ID</dt><dd>{o.taxonomyId || '—'}</dd></div>
-                <div><dt className="text-gray-500">Kingdom</dt><dd>{o.kingdom}</dd></div>
-                <div><dt className="text-gray-500"># Associated Samples</dt><dd>{countByOrganism[o.id] ?? 0}</dd></div>
-              </dl>
-              {canManageOrganisms && (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => { setViewOrganismId(null); setModal({ id: o.id, organism: o }); }}
-                    className="text-mint-600 hover:text-mint-800 font-medium text-sm"
-                  >
-                    Edit organism →
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {modal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

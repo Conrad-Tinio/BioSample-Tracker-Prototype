@@ -3,19 +3,26 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SAMPLE_TYPES, SAMPLE_STATUSES } from '../data/mockData';
+import { generateSampleId } from '../utils/sampleId';
 
 export default function SampleForm() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
-  const { user, canManageSamples } = useAuth();
-  const { samples, organisms, projects, addSample, updateSample, addActivity } = useData();
+  const { user, canManageSamples, isAdmin, isResearcher } = useAuth();
+  const { samples, organisms, projects, users, addSample, updateSample, addActivity } = useData();
+
+  const activeResearchers = (users || []).filter(
+    (u) => u.role === 'Researcher' && u.status === 'Active'
+  );
 
   const [form, setForm] = useState({
-    sampleName: '',
     sampleType: '',
     organismId: '',
     projectId: '',
+    disease: '',
+    tissueSource: '',
+    studyPurpose: '',
     collectionDate: '',
     collectedBy: '',
     storageLocation: '',
@@ -25,30 +32,41 @@ export default function SampleForm() {
   const [errors, setErrors] = useState({});
 
   const sample = isEdit ? samples.find((s) => s.id === id) : null;
+  const selectedProject = projects.find((p) => p.id === form.projectId);
+  const previewId = !isEdit && form.projectId && form.sampleType
+    ? generateSampleId(selectedProject?.name, form.sampleType, samples.length)
+    : '';
 
   useEffect(() => {
     if (!canManageSamples) {
       navigate('/samples');
       return;
     }
+    if (sample && isResearcher && sample.collectedBy !== user?.fullName) {
+      navigate('/samples');
+      return;
+    }
     if (sample) {
       setForm({
-        sampleName: sample.sampleName,
         sampleType: sample.sampleType,
         organismId: sample.organismId,
         projectId: sample.projectId,
+        disease: sample.disease ?? '',
+        tissueSource: sample.tissueSource ?? '',
+        studyPurpose: sample.studyPurpose ?? '',
         collectionDate: sample.collectionDate,
         collectedBy: sample.collectedBy,
         storageLocation: sample.storageLocation,
         status: sample.status,
         notes: sample.notes ?? '',
       });
+    } else if (!isEdit && isResearcher && user?.fullName) {
+      setForm((f) => ({ ...f, collectedBy: user.fullName }));
     }
-  }, [sample, isEdit, canManageSamples, navigate]);
+  }, [sample, isEdit, canManageSamples, navigate, isResearcher, user?.fullName]);
 
   const validate = () => {
     const e = {};
-    if (!form.sampleName?.trim()) e.sampleName = 'Required';
     if (!form.sampleType) e.sampleType = 'Required';
     if (!form.organismId) e.organismId = 'Required';
     if (!form.projectId) e.projectId = 'Required';
@@ -60,16 +78,20 @@ export default function SampleForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    const payload = {
-      ...form,
-      sampleId: form.sampleName,
-    };
     if (isEdit) {
+      const payload = { ...form, sampleId: sample.sampleId, sampleName: sample.sampleName };
       updateSample(id, payload);
-      addActivity(`${user?.fullName} updated sample ${form.sampleName}`);
+      addActivity(`${user?.fullName} updated sample ${sample.sampleId}`);
     } else {
+      const generatedId = generateSampleId(selectedProject?.name, form.sampleType, samples.length);
+      const payload = {
+        ...form,
+        sampleId: generatedId,
+        sampleName: generatedId,
+        collectedBy: form.collectedBy || user?.fullName || '',
+      };
       addSample(payload);
-      addActivity(`${user?.fullName} added sample ${form.sampleName}`);
+      addActivity(`${user?.fullName} added sample ${generatedId}`);
     }
     navigate('/samples');
   };
@@ -82,16 +104,35 @@ export default function SampleForm() {
         {isEdit ? 'Edit Sample' : 'Add Sample'}
       </h1>
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-mint-100 shadow-sm p-6 space-y-4">
+        {isEdit ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sample ID</label>
+            <input
+              type="text"
+              value={sample?.sampleId ?? ''}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500 mt-1">Sample ID cannot be edited.</p>
+          </div>
+        ) : (
+          (form.projectId && form.sampleType) && (
+            <div className="p-3 rounded-lg bg-mint-50 border border-mint-200">
+              <label className="block text-sm font-medium text-mint-800 mb-1">Generated Sample ID (preview)</label>
+              <p className="font-mono font-semibold text-mint-800">{previewId}</p>
+              <p className="text-xs text-gray-500 mt-1">This ID will be assigned when you submit.</p>
+            </div>
+          )
+        )}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Sample Name *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Disease</label>
           <input
             type="text"
-            value={form.sampleName}
-            onChange={(e) => setForm((f) => ({ ...f, sampleName: e.target.value }))}
-            className={`w-full px-3 py-2 border rounded-lg ${errors.sampleName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-mint-500`}
-            placeholder="e.g. HGV-TIS-016"
+            value={form.disease}
+            onChange={(e) => setForm((f) => ({ ...f, disease: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mint-500"
+            placeholder="e.g. Dengue, Hypertension, N/A"
           />
-          {errors.sampleName && <p className="text-red-500 text-xs mt-1">{errors.sampleName}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Sample Type *</label>
@@ -136,6 +177,26 @@ export default function SampleForm() {
           {errors.projectId && <p className="text-red-500 text-xs mt-1">{errors.projectId}</p>}
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tissue Source</label>
+          <input
+            type="text"
+            value={form.tissueSource}
+            onChange={(e) => setForm((f) => ({ ...f, tissueSource: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mint-500"
+            placeholder="e.g. Plasma, Peripheral Blood, Leaf"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Study Purpose</label>
+          <input
+            type="text"
+            value={form.studyPurpose}
+            onChange={(e) => setForm((f) => ({ ...f, studyPurpose: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mint-500"
+            placeholder="e.g. Biomarker Study, Cardiovascular risk analysis"
+          />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Collection Date *</label>
           <input
             type="date"
@@ -147,12 +208,25 @@ export default function SampleForm() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Collected By</label>
-          <input
-            type="text"
-            value={form.collectedBy}
-            onChange={(e) => setForm((f) => ({ ...f, collectedBy: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mint-500"
-          />
+          {isResearcher ? (
+            <input
+              type="text"
+              value={form.collectedBy || user?.fullName || ''}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+            />
+          ) : (
+            <select
+              value={form.collectedBy}
+              onChange={(e) => setForm((f) => ({ ...f, collectedBy: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mint-500"
+            >
+              <option value="">Select researcher</option>
+              {activeResearchers.map((r) => (
+                <option key={r.id} value={r.fullName}>{r.fullName}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Storage Location</label>

@@ -6,6 +6,7 @@ import {
   MOCK_ACTIVITY_INITIAL,
   MOCK_USERS,
 } from '../data/mockData';
+import { setUserPassword } from '../store/authStore';
 
 const DataContext = createContext(null);
 
@@ -84,13 +85,15 @@ export function DataProvider({ children }) {
   }, []);
 
   const addUser = useCallback((userData) => {
-    const { password: _, ...rest } = userData;
+    const { password, ...rest } = userData;
     const newUser = {
       ...rest,
       id: userData.id || generateId('u'),
       dateCreated: new Date().toISOString().split('T')[0],
       createdBy: userData.createdBy || 'Admin',
+      pendingDaysRemaining: userData.pendingDaysRemaining,
     };
+    if (password) setUserPassword(userData.email, password);
     setUsers((prev) => [...prev, newUser]);
     return newUser;
   }, []);
