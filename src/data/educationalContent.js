@@ -3,44 +3,44 @@
  * Keys match mock data: organism id, sample type, disease, study purpose.
  */
 
-// Organism id (e.g. org1) -> { description, taxonomy }
+// Organism id (NCBI-[taxonomyId]) -> { description, taxonomy }
 export const ORGANISM_CONTENT = {
-  org1: {
+  'NCBI-9606': {
     description:
       'Homo sapiens (human) is the most studied organism in biomedical research. The Human Genome Project completed in 2003 provided a reference sequence that continues to drive disease genetics, drug development, and personalized medicine. Human samples are essential for understanding genetic variants linked to disease susceptibility, pharmacogenomics, and biomarker discovery. Research on human specimens must follow strict ethical and regulatory guidelines.',
     taxonomy: 'Kingdom: Animalia · Phylum: Chordata · Class: Mammalia · Order: Primates · Family: Hominidae · Genus: Homo · Species: Homo sapiens',
   },
-  org2: {
+  'NCBI-10090': {
     description:
       'Mus musculus (house mouse) is the most widely used mammalian model organism in biomedical research. Mice share approximately 85% of their genome with humans and have been instrumental in preclinical drug testing, genetic studies, and understanding disease mechanisms. Their short generation time, ease of breeding, and the availability of genetically modified strains make them indispensable for studying cancer, immunology, neuroscience, and metabolic disorders.',
     taxonomy: 'Kingdom: Animalia · Phylum: Chordata · Class: Mammalia · Order: Rodentia · Family: Muridae · Genus: Mus · Species: Mus musculus',
   },
-  org3: {
+  'NCBI-3702': {
     description:
       'Arabidopsis thaliana (thale cress) is the primary model organism for plant biology. It has a small genome, a short life cycle of about six weeks, and is easy to grow in the lab. Research on Arabidopsis has advanced our understanding of plant genetics, molecular biology, development, and responses to stress. Findings in Arabidopsis often translate to crops, supporting agricultural improvement and food security.',
     taxonomy: 'Kingdom: Plantae · Phylum: Angiosperms · Class: Eudicots · Order: Brassicales · Family: Brassicaceae · Genus: Arabidopsis · Species: Arabidopsis thaliana',
   },
-  org4: {
+  'NCBI-562': {
     description:
       'Escherichia coli is one of the most well-studied prokaryotes and a workhorse of molecular biology and genetic engineering. It is used for cloning, protein expression, and fundamental studies of gene regulation and metabolism. E. coli is also central to antibiotic resistance research, as many resistance genes and mechanisms were first characterized in this bacterium. Understanding E. coli helps inform clinical treatment of infections and public health surveillance.',
     taxonomy: 'Kingdom: Bacteria · Phylum: Proteobacteria · Class: Gammaproteobacteria · Order: Enterobacterales · Family: Enterobacteriaceae · Genus: Escherichia · Species: Escherichia coli',
   },
-  org5: {
+  'NCBI-4932': {
     description:
       'Saccharomyces cerevisiae (baker\'s yeast) is the primary model for eukaryotic cell biology. It has been used to study cell division, gene expression, DNA repair, and metabolic pathways. Yeast is central to fermentation science and industrial biotechnology. Its compact genome and ease of genetic manipulation make it ideal for understanding conserved cellular mechanisms that apply to higher eukaryotes, including humans.',
     taxonomy: 'Kingdom: Fungi · Phylum: Ascomycota · Class: Saccharomycetes · Order: Saccharomycetales · Family: Saccharomycetaceae · Genus: Saccharomyces · Species: Saccharomyces cerevisiae',
   },
-  org6: {
+  'NCBI-7227': {
     description:
       'Drosophila melanogaster (fruit fly) has been a foundational model organism in genetics since the early 1900s. It was used to establish the chromosome theory of inheritance and to discover many genes that control development. Today it is used to study inheritance, development, neurobiology, aging, and behavior. Its short life cycle, low cost, and powerful genetic tools make it a mainstay of biological research.',
     taxonomy: 'Kingdom: Animalia · Phylum: Arthropoda · Class: Insecta · Order: Diptera · Family: Drosophilidae · Genus: Drosophila · Species: Drosophila melanogaster',
   },
-  org7: {
+  'NCBI-4530': {
     description:
       'Oryza sativa (rice) is one of the most important food crops globally and a staple for billions of people. It is a key species in agricultural genomics, with a sequenced genome that supports research into disease resistance, yield improvement, and stress tolerance. Studying rice at the molecular level helps develop better varieties for sustainable agriculture and food security, especially in Asia and other rice-growing regions.',
     taxonomy: 'Kingdom: Plantae · Phylum: Angiosperms · Class: Monocots · Order: Poales · Family: Poaceae · Genus: Oryza · Species: Oryza sativa',
   },
-  org8: {
+  'NCBI-7955': {
     description:
       'Danio rerio (zebrafish) is a powerful vertebrate model for developmental biology and biomedical research. Its embryos are transparent, allowing live imaging of cell division, migration, and organ formation. Zebrafish are used in genetic screening, drug discovery, and studying heart development, neurobiology, and regeneration. They combine the relevance of a vertebrate with the convenience of small, fast-growing, and genetically tractable organisms.',
     taxonomy: 'Kingdom: Animalia · Phylum: Chordata · Class: Actinopterygii · Order: Cypriniformes · Family: Cyprinidae · Genus: Danio · Species: Danio rerio',

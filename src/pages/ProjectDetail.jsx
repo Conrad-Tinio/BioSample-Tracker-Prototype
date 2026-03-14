@@ -1,22 +1,30 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 
 export default function ProjectDetail() {
   const { id } = useParams();
-  const { projects, samples, organisms } = useData();
+  const { user, isAdmin, isResearcher } = useAuth();
+  const { projects, samples, organisms, deleteSample, addActivity } = useData();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const project = projects.find((p) => p.id === id);
   const getOrgName = (oid) => organisms.find((o) => o.id === oid)?.scientificName ?? '';
   const getProjName = (pid) => projects.find((p) => p.id === pid)?.name ?? '';
 
+  const isLeadResearcher = isResearcher && project?.leadResearcher === user?.fullName;
+  const canAddSample = isAdmin || isLeadResearcher;
+  const canEditSample = (r) => isAdmin || (isResearcher && r.collectedBy === user?.fullName);
+  const canDeleteSample = (r) => isAdmin || (isResearcher && r.collectedBy === user?.fullName);
+
   const relatedSamples = useMemo(() => {
     if (!project) return [];
     return samples
-      .filter((s) => s.projectId === project.id && s.collectedBy === project.leadResearcher)
+      .filter((s) => s.projectId === project.id)
       .map((s) => ({
         ...s,
         organismName: getOrgName(s.organismId),
@@ -41,6 +49,12 @@ export default function ProjectDetail() {
     setSearch('');
     setFilterType('');
     setFilterStatus('');
+  };
+
+  const handleDeleteSample = (sampleId) => {
+    deleteSample(sampleId);
+    setConfirmDeleteId(null);
+    addActivity(`${user?.fullName} deleted a sample from project ${project?.name}`);
   };
 
   if (!project) {
@@ -74,9 +88,20 @@ export default function ProjectDetail() {
       </div>
 
       <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-4">
-        <h2 className="font-semibold text-gray-800 mb-3">
-          Related Samples (collected by {project.leadResearcher})
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="font-semibold text-gray-800">
+            Related Samples
+          </h2>
+          {canAddSample && (
+            <Link
+              to="/samples/new"
+              state={{ projectId: project.id, lockProject: true, returnTo: `/projects/${project.id}` }}
+              className="px-3 py-2 bg-mint-600 text-white text-sm font-medium rounded-lg hover:bg-mint-700"
+            >
+              Add Sample
+            </Link>
+          )}
+        </div>
         <p className="text-sm text-gray-500 mb-4">{filtered.length} samples found</p>
 
         <div className="space-y-3 mb-4">
@@ -121,6 +146,7 @@ export default function ProjectDetail() {
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Tissue Source</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Study Purpose</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Project name</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -133,6 +159,33 @@ export default function ProjectDetail() {
                   <td className="py-2 px-4">{r.tissueSource ?? '—'}</td>
                   <td className="py-2 px-4">{r.studyPurpose ?? '—'}</td>
                   <td className="py-2 px-4">{r.projectName}</td>
+                  <td className="py-2 px-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Link
+                        to={`/samples/${r.id}`}
+                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                      >
+                        View
+                      </Link>
+                      {canEditSample(r) && (
+                        <Link
+                          to={`/samples/${r.id}/edit`}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
+                        >
+                          Edit
+                        </Link>
+                      )}
+                      {canDeleteSample(r) && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(r.id)}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -142,6 +195,19 @@ export default function ProjectDetail() {
           <p className="py-6 text-center text-gray-500">No samples match your filters.</p>
         )}
       </div>
+
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+            <p className="font-medium text-gray-800 mb-2">Delete this sample?</p>
+            <p className="text-sm text-gray-500 mb-4">This action cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setConfirmDeleteId(null)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => handleDeleteSample(confirmDeleteId)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

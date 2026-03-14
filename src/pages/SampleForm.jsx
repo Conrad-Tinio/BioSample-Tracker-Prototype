@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SAMPLE_TYPES, SAMPLE_STATUSES } from '../data/mockData';
@@ -7,19 +7,24 @@ import { generateSampleId } from '../utils/sampleId';
 
 export default function SampleForm() {
   const { id } = useParams();
+  const location = useLocation();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { user, canManageSamples, isAdmin, isResearcher } = useAuth();
   const { samples, organisms, projects, users, addSample, updateSample, addActivity } = useData();
 
+  const lockProject = location.state?.lockProject && location.state?.projectId;
+  const returnTo = location.state?.returnTo;
+
   const activeResearchers = (users || []).filter(
     (u) => u.role === 'Researcher' && u.status === 'Active'
   );
 
+  const lockedProjectId = location.state?.lockProject && location.state?.projectId ? location.state.projectId : '';
   const [form, setForm] = useState({
     sampleType: '',
     organismId: '',
-    projectId: '',
+    projectId: lockedProjectId,
     disease: '',
     tissueSource: '',
     studyPurpose: '',
@@ -63,7 +68,10 @@ export default function SampleForm() {
     } else if (!isEdit && isResearcher && user?.fullName) {
       setForm((f) => ({ ...f, collectedBy: user.fullName }));
     }
-  }, [sample, isEdit, canManageSamples, navigate, isResearcher, user?.fullName]);
+    if (!isEdit && location.state?.projectId && location.state?.lockProject) {
+      setForm((f) => ({ ...f, projectId: location.state.projectId }));
+    }
+  }, [sample, isEdit, canManageSamples, navigate, isResearcher, user?.fullName, location.state?.projectId, location.state?.lockProject]);
 
   const validate = () => {
     const e = {};
@@ -93,7 +101,7 @@ export default function SampleForm() {
       addSample(payload);
       addActivity(`${user?.fullName} added sample ${generatedId}`);
     }
-    navigate('/samples');
+    navigate(returnTo || '/samples');
   };
 
   if (!canManageSamples) return null;
@@ -164,17 +172,31 @@ export default function SampleForm() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Project *</label>
-          <select
-            value={form.projectId}
-            onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
-            className={`w-full px-3 py-2 border rounded-lg ${errors.projectId ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-mint-500`}
-          >
-            <option value="">Select project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          {errors.projectId && <p className="text-red-500 text-xs mt-1">{errors.projectId}</p>}
+          {lockProject ? (
+            <>
+              <input
+                type="text"
+                value={projects.find((p) => p.id === form.projectId)?.name ?? form.projectId}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">Project is fixed when adding from Project Detail.</p>
+            </>
+          ) : (
+            <>
+              <select
+                value={form.projectId}
+                onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
+                className={`w-full px-3 py-2 border rounded-lg ${errors.projectId ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-mint-500`}
+              >
+                <option value="">Select project</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {errors.projectId && <p className="text-red-500 text-xs mt-1">{errors.projectId}</p>}
+            </>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tissue Source</label>
@@ -267,7 +289,7 @@ export default function SampleForm() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/samples')}
+            onClick={() => navigate(returnTo || '/samples')}
             className="px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
           >
             Cancel

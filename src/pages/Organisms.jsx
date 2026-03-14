@@ -4,22 +4,70 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { KINGDOMS } from '../data/mockData';
 
-function OrganismForm({ organism, onSave, onCancel }) {
+function organismIdFromTaxonomy(taxonomyId) {
+  const t = taxonomyId != null ? String(taxonomyId).trim() : '';
+  return t ? `NCBI-${t}` : '';
+}
+
+function OrganismForm({ organism, organisms, onSave, onCancel }) {
+  const isEdit = Boolean(organism?.id);
   const [form, setForm] = useState({
     scientificName: organism?.scientificName ?? '',
     commonName: organism?.commonName ?? '',
     taxonomyId: organism?.taxonomyId ?? '',
     kingdom: organism?.kingdom ?? 'Animalia',
   });
+  const [error, setError] = useState('');
+
+  const previewId = organismIdFromTaxonomy(form.taxonomyId);
+  const displayId = isEdit ? previewId : previewId;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+    const taxTrim = String(form.taxonomyId ?? '').trim();
+    if (!taxTrim) {
+      setError('Taxonomy ID is required to generate Organism ID.');
+      return;
+    }
+    const duplicate = (organisms || []).some(
+      (o) => String(o.taxonomyId ?? '').trim() === taxTrim && o.id !== organism?.id
+    );
+    if (duplicate) {
+      setError('An organism with this Taxonomy ID already exists.');
+      return;
+    }
+    const id = organismIdFromTaxonomy(form.taxonomyId);
+    onSave({ ...form, id });
+  };
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(form);
-      }}
-      className="space-y-3"
-    >
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {error && (
+        <div className="p-2 rounded-lg bg-red-50 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+      {isEdit ? (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Organism ID</label>
+          <input
+            type="text"
+            value={displayId}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1">Organism ID is derived from Taxonomy ID and cannot be edited directly.</p>
+        </div>
+      ) : (
+        form.taxonomyId && (
+          <div className="p-3 rounded-lg bg-mint-50 border border-mint-200">
+            <label className="block text-sm font-medium text-mint-800 mb-1">Generated Organism ID (preview)</label>
+            <p className="font-mono font-semibold text-mint-800">{previewId}</p>
+            <p className="text-xs text-gray-500 mt-1">This ID will be assigned when you submit.</p>
+          </div>
+        )
+      )}
       <input
         type="text"
         placeholder="Scientific Name"
@@ -41,6 +89,7 @@ function OrganismForm({ organism, onSave, onCancel }) {
         value={form.taxonomyId}
         onChange={(e) => setForm((f) => ({ ...f, taxonomyId: e.target.value }))}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        required
       />
       <select
         value={form.kingdom}
@@ -85,8 +134,12 @@ export default function Organisms() {
   };
 
   const handleSave = (data) => {
-    if (modal === 'new') addOrganism(data);
-    else if (modal?.id) updateOrganism(modal.id, data);
+    if (modal === 'new') {
+      addOrganism({ ...data, id: data.id || `NCBI-${String(data.taxonomyId ?? '').trim()}` });
+    } else if (modal?.id) {
+      const newId = data.id || `NCBI-${String(data.taxonomyId ?? '').trim()}`;
+      updateOrganism(modal.id, { ...data, id: newId });
+    }
     setModal(null);
   };
 
@@ -196,7 +249,7 @@ export default function Organisms() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">{modal === 'new' ? 'New Organism' : 'Edit Organism'}</h2>
-            <OrganismForm organism={modal === 'new' ? null : modal.organism} onSave={handleSave} onCancel={() => setModal(null)} />
+            <OrganismForm organism={modal === 'new' ? null : modal.organism} organisms={organisms} onSave={handleSave} onCancel={() => setModal(null)} />
           </div>
         </div>
       )}

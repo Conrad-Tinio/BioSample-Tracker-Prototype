@@ -69,9 +69,15 @@ export function DataProvider({ children }) {
   }, []);
 
   const updateOrganism = useCallback((id, updates) => {
+    const newId = updates.id !== undefined ? updates.id : id;
     setOrganisms((prev) =>
       prev.map((o) => (o.id === id ? { ...o, ...updates } : o))
     );
+    if (newId !== id) {
+      setSamples((prev) =>
+        prev.map((s) => (s.organismId === id ? { ...s, organismId: newId } : s))
+      );
+    }
   }, []);
 
   const deleteOrganism = useCallback((id) => {

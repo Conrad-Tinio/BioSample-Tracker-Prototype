@@ -121,8 +121,11 @@ function ProjectForm({ project, onSave, onCancel }) {
 }
 
 export default function Projects() {
-  const { canManageProjects } = useAuth();
+  const { user, canManageProjects, isResearcher } = useAuth();
   const { projects, samples, addProject, updateProject, deleteProject } = useData();
+
+  const canEditProject = (p) =>
+    canManageProjects || (isResearcher && p.leadResearcher === user?.fullName);
   const [modal, setModal] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [search, setSearch] = useState('');
@@ -237,7 +240,7 @@ export default function Projects() {
                     >
                       View
                     </Link>
-                    {canManageProjects && (
+                    {canEditProject(p) && (
                       <>
                         <button
                           type="button"
