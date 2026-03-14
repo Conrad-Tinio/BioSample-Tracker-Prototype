@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { exportSamplesCSV, exportSamplesPDF } from '../utils/export';
 
 export default function Samples() {
+  const navigate = useNavigate();
   const { user, canManageSamples, canDeleteSamples, canExportCSV, canExportPDF, isAdmin, isResearcher } = useAuth();
   const { samples, organisms, projects, deleteSample, addActivity } = useData();
   const [search, setSearch] = useState('');
@@ -12,7 +13,6 @@ export default function Samples() {
   const [filterType, setFilterType] = useState('');
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const getOrgName = (id) => organisms.find((o) => o.id === id)?.scientificName ?? '';
@@ -46,12 +46,9 @@ export default function Samples() {
     setFilterStatus('');
   };
 
-  const selected = selectedId ? rows.find((r) => r.id === selectedId) : null;
-
   const handleDelete = (id) => {
     deleteSample(id);
     setConfirmDelete(null);
-    setSelectedId(null);
   };
 
   const handleExportCSV = () => {
@@ -181,7 +178,7 @@ export default function Samples() {
               {filtered.map((r) => (
                 <tr
                   key={r.id}
-                  onClick={() => setSelectedId(selectedId === r.id ? null : r.id)}
+                  onClick={() => navigate(`/samples/${r.id}`)}
                   className="border-b border-mint-50 hover:bg-mint-50/50 cursor-pointer"
                 >
                   <td className="py-2 px-4">{r.sampleId}</td>
@@ -193,13 +190,12 @@ export default function Samples() {
                   <td className="py-2 px-4">{r.projectName}</td>
                   <td className="py-2 px-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(selectedId === r.id ? null : r.id)}
+                        <Link
+                          to={`/samples/${r.id}`}
                           className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                         >
                           View
-                        </button>
+                        </Link>
                         {canEditSample(r) && (
                           <Link
                             to={`/samples/${r.id}/edit`}
@@ -211,7 +207,7 @@ export default function Samples() {
                         {canDeleteSample(r) && (
                           <button
                             type="button"
-                            onClick={() => setConfirmDelete(r.id)}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(r.id); }}
                             className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
                           >
                             Delete
@@ -228,47 +224,6 @@ export default function Samples() {
           <p className="py-8 text-center text-gray-500">No samples match your filters.</p>
         )}
       </div>
-
-      {selected && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedId(null)}>
-          <div className="bg-white rounded-xl border border-mint-100 shadow-xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">Sample Details</h2>
-              <button
-                type="button"
-                onClick={() => setSelectedId(null)}
-                className="px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-            </div>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div><dt className="text-gray-500">Sample ID</dt><dd className="font-medium">{selected.sampleId}</dd></div>
-              <div><dt className="text-gray-500">Disease</dt><dd>{selected.disease ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Organism</dt><dd>{selected.organismName}</dd></div>
-              <div><dt className="text-gray-500">Sample Type</dt><dd>{selected.sampleType}</dd></div>
-              <div><dt className="text-gray-500">Tissue Source</dt><dd>{selected.tissueSource ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Study Purpose</dt><dd>{selected.studyPurpose ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Project name</dt><dd>{selected.projectName}</dd></div>
-              <div><dt className="text-gray-500">Collection Date</dt><dd>{selected.collectionDate ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Collected By</dt><dd>{selected.collectedBy ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Storage Location</dt><dd>{selected.storageLocation ?? '—'}</dd></div>
-              <div><dt className="text-gray-500">Status</dt><dd>{selected.status ?? '—'}</dd></div>
-              <div className="sm:col-span-2"><dt className="text-gray-500">Notes</dt><dd>{selected.notes || '—'}</dd></div>
-            </dl>
-            {canManageSamples && (
-              <div className="mt-4">
-                <Link
-                  to={`/samples/${selected.id}/edit`}
-                  className="text-mint-600 hover:text-mint-800 font-medium"
-                >
-                  Edit sample →
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

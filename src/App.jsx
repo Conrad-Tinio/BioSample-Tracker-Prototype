@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Samples from './pages/Samples';
+import SampleDetail from './pages/SampleDetail';
 import SampleForm from './pages/SampleForm';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
@@ -33,6 +34,7 @@ function App() {
         <Route path="samples" element={<Samples />} />
         <Route path="samples/new" element={<SampleForm />} />
         <Route path="samples/:id/edit" element={<SampleForm />} />
+        <Route path="samples/:id" element={<SampleDetail />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
         <Route path="organisms" element={<Organisms />} />
