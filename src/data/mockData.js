@@ -1,9 +1,9 @@
-// Test login accounts
+// Test login accounts - ID format: [ROLE_CODE]-[NAME_INITIALS]-[INCREMENT]
 export const MOCK_USERS = [
-  { id: 'u1', email: 'admin@biosample.com', password: 'admin123', fullName: 'Dr. Maria Santos', role: 'Admin', status: 'Active', dateCreated: '2024-01-15', createdBy: 'System' },
-  { id: 'u2', email: 'researcher@biosample.com', password: 'research123', fullName: 'Dr. Juan Dela Cruz', role: 'Researcher', status: 'Active', dateCreated: '2024-02-01', createdBy: 'Dr. Maria Santos' },
-  { id: 'u3', email: 'student@biosample.com', password: 'student123', fullName: 'Ana Reyes', role: 'Student', status: 'Active', dateCreated: '2024-02-10', createdBy: 'Dr. Maria Santos' },
-  { id: 'u4', email: 'pending@biosample.com', password: 'pending123', fullName: 'Carlo Mendoza', role: 'Researcher', status: 'Pending', dateCreated: '2024-02-26', createdBy: 'Self', pendingDaysRemaining: 2 },
+  { id: 'ADM-DMS-001', email: 'admin@biosample.com', password: 'admin123', fullName: 'Dr. Maria Santos', role: 'Admin', status: 'Active', dateCreated: '2024-01-15', createdBy: 'System' },
+  { id: 'RES-DJDC-002', email: 'researcher@biosample.com', password: 'research123', fullName: 'Dr. Juan Dela Cruz', role: 'Researcher', status: 'Active', dateCreated: '2024-02-01', createdBy: 'Dr. Maria Santos' },
+  { id: 'STU-AR-003', email: 'student@biosample.com', password: 'student123', fullName: 'Ana Reyes', role: 'Student', status: 'Active', dateCreated: '2024-02-10', createdBy: 'Dr. Maria Santos' },
+  { id: 'RES-CM-004', email: 'pending@biosample.com', password: 'pending123', fullName: 'Carlo Mendoza', role: 'Researcher', status: 'Pending', dateCreated: '2024-02-26', createdBy: 'Self', pendingDaysRemaining: 2 },
 ];
 
 // Test organisms (at least 8) - ID format: NCBI-[TAXONOMY_ID]
