@@ -11,10 +11,11 @@ export default function SampleForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { user, canManageSamples, isAdmin, isResearcher } = useAuth();
-  const { samples, organisms, projects, users, addSample, updateSample, addActivity } = useData();
+  const { samples, organisms, projects, users, addSample, updateSample, addActivity, submitEditRequest } = useData();
 
   const lockProject = location.state?.lockProject && location.state?.projectId;
   const returnTo = location.state?.returnTo;
+  const isRequestEdit = Boolean(location.state?.requestEdit);
 
   const activeResearchers = (users || []).filter(
     (u) => u.role === 'Researcher' && u.status === 'Active'
@@ -73,6 +74,25 @@ export default function SampleForm() {
     }
   }, [sample, isEdit, canManageSamples, navigate, isResearcher, user?.fullName, location.state?.projectId, location.state?.lockProject]);
 
+  const buildChanges = (before, after) => {
+    const fields = [
+      'disease',
+      'sampleType',
+      'organismId',
+      'projectId',
+      'tissueSource',
+      'studyPurpose',
+      'collectionDate',
+      'collectedBy',
+      'storageLocation',
+      'status',
+      'notes',
+    ];
+    return fields
+      .filter((k) => String(before?.[k] ?? '') !== String(after?.[k] ?? ''))
+      .map((k) => ({ field: k, from: before?.[k] ?? '', to: after?.[k] ?? '' }));
+  };
+
   const validate = () => {
     const e = {};
     if (!form.sampleType) e.sampleType = 'Required';
@@ -88,6 +108,26 @@ export default function SampleForm() {
     if (!validate()) return;
     if (isEdit) {
       const payload = { ...form, sampleId: sample.sampleId, sampleName: sample.sampleName };
+      if (isRequestEdit && isResearcher && !isAdmin) {
+        // Co-Researcher flow: submit a pending edit request instead of applying immediately.
+        const changes = buildChanges(sample, payload);
+        submitEditRequest({
+          projectId: sample.projectId,
+          requestedBy: user?.fullName || 'Unknown',
+          sampleRecordId: sample.id,
+          sampleId: sample.sampleId,
+          proposedUpdates: payload,
+          changes,
+        });
+        addActivity(`${user?.fullName} submitted an edit request for sample ${sample.sampleId}`);
+        const msg = 'Your edit request has been submitted for approval by the Lead Researcher.';
+        // Use sessionStorage as a reliable cross-route confirmation channel for the prototype.
+        try {
+          sessionStorage.setItem('biosample_flash', msg);
+        } catch {}
+        navigate(returnTo || '/samples', { state: { flash: msg } });
+        return;
+      }
       updateSample(id, payload);
       addActivity(`${user?.fullName} updated sample ${sample.sampleId}`);
     } else {
