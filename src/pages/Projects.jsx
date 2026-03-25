@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -11,14 +11,6 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
   const activeResearchers = (users || []).filter(
     (u) => u.role === 'Researcher' && u.status === 'Active'
   );
-  // For the prototype, mock data may include Admin accounts as co-researchers.
-  const activeCoResearcherCandidates = (users || []).filter(
-    (u) => (u.role === 'Researcher' || u.role === 'Admin') && u.status === 'Active'
-  );
-  // In this prototype, the Lead Researcher can also be an Admin account (e.g. Dr. Maria Santos).
-  const activeLeadCandidates = (users || []).filter(
-    (u) => (u.role === 'Researcher' || u.role === 'Admin') && u.status === 'Active'
-  );
   const isEdit = Boolean(project?.id);
   const [form, setForm] = useState({
     name: project?.name ?? '',
@@ -26,7 +18,6 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
     startDate: project?.startDate ?? '',
     endDate: project?.endDate ?? '',
     leadResearcher: project?.leadResearcher ?? '',
-    coResearchers: project?.coResearchers ?? [],
     status: project?.status ?? 'Active',
     publicationStatus: getProjectPublicationStatus(project),
   });
@@ -34,6 +25,7 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
     ? generateProjectId(form.name, form.startDate, projects.length)
     : '';
 
+<<<<<<< HEAD
   const availableCoResearchers = activeResearchers
     .concat(activeCoResearcherCandidates.filter((r) => r.role === 'Admin'))
     .map((r) => r.fullName)
@@ -69,6 +61,8 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, isEdit]);
 
+=======
+>>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
   return (
     <form
       onSubmit={(e) => {
@@ -130,51 +124,21 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
       </div>
       <select
         value={form.leadResearcher}
-        onChange={(e) => {
-          const newLead = e.target.value;
-          setForm((f) => ({
-            ...f,
-            leadResearcher: newLead,
-            coResearchers: (f.coResearchers || []).filter((n) => n !== newLead),
-          }));
-        }}
+        onChange={(e) => setForm((f) => ({ ...f, leadResearcher: e.target.value }))}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        required={activeLeadCandidates.length > 0}
+        required={activeResearchers.length > 0}
       >
-        {activeLeadCandidates.length === 0 ? (
-          <option value="" disabled>No active lead candidates available.</option>
+        {activeResearchers.length === 0 ? (
+          <option value="" disabled>No active researchers available.</option>
         ) : (
           <>
             <option value="">Select lead researcher</option>
-            {activeLeadCandidates.map((r) => (
+            {activeResearchers.map((r) => (
               <option key={r.id} value={r.fullName}>{r.fullName}</option>
             ))}
           </>
         )}
       </select>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Co-Researchers</label>
-        <select
-          multiple
-          value={form.coResearchers}
-          onChange={(e) => {
-            const values = Array.from(e.target.selectedOptions).map((o) => o.value);
-            setForm((f) => ({ ...f, coResearchers: values.filter((n) => n !== f.leadResearcher) }));
-          }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[96px]"
-        >
-          {availableCoResearchers.length === 0 ? (
-            <option value="" disabled>No available co-researchers.</option>
-          ) : (
-            availableCoResearchers.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))
-          )}
-        </select>
-        <p className="text-xs text-gray-500 mt-1">
-          Select zero or more co-researchers. The Lead Researcher cannot be selected as a Co-Researcher.
-        </p>
-      </div>
       <select
         value={form.status}
         onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
@@ -324,7 +288,6 @@ export default function Projects() {
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Start Date</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">End Date</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Lead Researcher</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700">Co-Researchers</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700"># Samples</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -340,6 +303,7 @@ export default function Projects() {
                 <td className="py-2 px-4">{p.endDate || '—'}</td>
                 <td className="py-2 px-4">{p.leadResearcher}</td>
                 <td className="py-2 px-4">
+<<<<<<< HEAD
                   {(p.coResearchers && p.coResearchers.length > 0) ? p.coResearchers.join(', ') : 'None'}
                 </td>
                 <td className="py-2 px-4">
@@ -356,6 +320,14 @@ export default function Projects() {
                       {getProjectPublicationStatus(p)}
                     </span>
                   </div>
+=======
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    p.status === 'Active' ? 'bg-green-100 text-green-800' :
+                    p.status === 'Completed' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {p.status}
+                  </span>
+>>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
                 </td>
                 <td className="py-2 px-4">{countByProject[p.id] ?? 0}</td>
                 <td className="py-2 px-4">

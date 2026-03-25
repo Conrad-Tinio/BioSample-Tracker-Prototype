@@ -5,7 +5,6 @@ import {
   MOCK_SAMPLES_INITIAL,
   MOCK_ACTIVITY_INITIAL,
   MOCK_USERS,
-  MOCK_PENDING_REQUESTS_INITIAL,
 } from '../data/mockData';
 import { setUserPassword } from '../store/authStore';
 import { generateUserId } from '../utils/userId';
@@ -25,7 +24,6 @@ export function DataProvider({ children }) {
   );
   const [users, setUsers] = useState(MOCK_USERS.map((u) => ({ ...u, password: undefined })));
   const [activity, setActivity] = useState(MOCK_ACTIVITY_INITIAL);
-  const [pendingRequests, setPendingRequests] = useState(MOCK_PENDING_REQUESTS_INITIAL);
 
   const addSample = useCallback((sample) => {
     const newSample = {
@@ -45,80 +43,6 @@ export function DataProvider({ children }) {
 
   const deleteSample = useCallback((id) => {
     setSamples((prev) => prev.filter((s) => s.id !== id));
-  }, []);
-
-  const submitEditRequest = useCallback(({
-    projectId,
-    requestedBy,
-    sampleRecordId,
-    sampleId,
-    proposedUpdates,
-    changes,
-  }) => {
-    const req = {
-      id: generateId('pr'),
-      projectId,
-      type: 'edit',
-      requestedBy,
-      sampleRecordId,
-      sampleId,
-      submittedAt: new Date().toISOString(),
-      proposedUpdates,
-      changes,
-    };
-    setPendingRequests((prev) => [req, ...prev]);
-    return req;
-  }, []);
-
-  const submitDeleteRequest = useCallback(({
-    projectId,
-    requestedBy,
-    sampleRecordId,
-    sampleId,
-    reason,
-  }) => {
-    const req = {
-      id: generateId('pr'),
-      projectId,
-      type: 'delete',
-      requestedBy,
-      sampleRecordId,
-      sampleId,
-      submittedAt: new Date().toISOString(),
-      reason,
-    };
-    setPendingRequests((prev) => [req, ...prev]);
-    return req;
-  }, []);
-
-  const approvePendingRequest = useCallback((requestId) => {
-    let approved = null;
-    setPendingRequests((prev) => {
-      const found = prev.find((r) => r.id === requestId);
-      approved = found || null;
-      return prev.filter((r) => r.id !== requestId);
-    });
-    if (!approved) return null;
-
-    if (approved.type === 'edit') {
-      setSamples((prev) =>
-        prev.map((s) => (s.id === approved.sampleRecordId ? { ...s, ...approved.proposedUpdates } : s))
-      );
-    } else if (approved.type === 'delete') {
-      setSamples((prev) => prev.filter((s) => s.id !== approved.sampleRecordId));
-    }
-
-    return approved;
-  }, []);
-
-  const rejectPendingRequest = useCallback((requestId) => {
-    let rejected = null;
-    setPendingRequests((prev) => {
-      const found = prev.find((r) => r.id === requestId);
-      rejected = found || null;
-      return prev.filter((r) => r.id !== requestId);
-    });
-    return rejected;
   }, []);
 
   const addActivity = useCallback((text) => {
@@ -211,14 +135,9 @@ export function DataProvider({ children }) {
     projects,
     users,
     activity,
-    pendingRequests,
     addSample,
     updateSample,
     deleteSample,
-    submitEditRequest,
-    submitDeleteRequest,
-    approvePendingRequest,
-    rejectPendingRequest,
     addActivity,
     addProject,
     updateProject,

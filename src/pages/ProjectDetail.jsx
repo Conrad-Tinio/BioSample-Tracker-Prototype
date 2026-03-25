@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { canUserChangeProjectPublication, canUserViewProject, getProjectPublicationStatus } from '../utils/visibility';
@@ -7,47 +7,32 @@ import { canUserChangeProjectPublication, canUserViewProject, getProjectPublicat
 export default function ProjectDetail() {
   const { id } = useParams();
   const { user, isAdmin, isResearcher } = useAuth();
+<<<<<<< HEAD
   const location = useLocation();
   const navigate = useNavigate();
   const { projects, samples, organisms, deleteSample, addActivity, pendingRequests, submitDeleteRequest, approvePendingRequest, rejectPendingRequest, updateProject } = useData();
+=======
+  const { projects, samples, organisms, deleteSample, addActivity } = useData();
+>>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+<<<<<<< HEAD
   const [confirmRequestDelete, setConfirmRequestDelete] = useState(null);
   const [confirmPublication, setConfirmPublication] = useState(null);
   const [flash, setFlash] = useState('');
+=======
+>>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
 
   const project = projects.find((p) => p.id === id);
   const getOrgName = (oid) => organisms.find((o) => o.id === oid)?.scientificName ?? '';
   const getProjName = (pid) => projects.find((p) => p.id === pid)?.name ?? '';
 
   const isLeadResearcher = isResearcher && project?.leadResearcher === user?.fullName;
-  const isCoResearcher = isResearcher && (project?.coResearchers || []).includes(user?.fullName);
-  const canAddSample = isAdmin || isLeadResearcher || isCoResearcher;
-
-  const canEditSampleDirect = () => isAdmin || isLeadResearcher;
-  const canDeleteSampleDirect = () => isAdmin || isLeadResearcher;
-  const canRequestEdit = (r) => !isAdmin && isCoResearcher && r.collectedBy === user?.fullName;
-  const canRequestDelete = (r) => !isAdmin && isCoResearcher && r.collectedBy === user?.fullName;
-
-  useEffect(() => {
-    const stateMsg = location.state?.flash;
-    if (stateMsg) {
-      setFlash(stateMsg);
-      navigate(location.pathname, { replace: true, state: {} });
-      return;
-    }
-
-    // Fallback for cases where navigation state is lost between routes.
-    try {
-      const stored = sessionStorage.getItem('biosample_flash');
-      if (stored) {
-        setFlash(stored);
-        sessionStorage.removeItem('biosample_flash');
-      }
-    } catch {}
-  }, [location.state, location.pathname, navigate]);
+  const canAddSample = isAdmin || isLeadResearcher;
+  const canEditSample = (r) => isAdmin || (isResearcher && r.collectedBy === user?.fullName);
+  const canDeleteSample = (r) => isAdmin || (isResearcher && r.collectedBy === user?.fullName);
 
   const relatedSamples = useMemo(() => {
     if (!project) return [];
@@ -88,41 +73,6 @@ export default function ProjectDetail() {
     addActivity(`${user?.fullName} deleted a sample from project ${project?.name}`);
   };
 
-  const pendingForProject = useMemo(() => {
-    if (!project) return [];
-    return (pendingRequests || []).filter((r) => r.projectId === project.id);
-  }, [pendingRequests, project]);
-
-  const canSeePendingQueue = isAdmin || isLeadResearcher;
-
-  const handleRequestDelete = (sample) => {
-    submitDeleteRequest({
-      projectId: project.id,
-      requestedBy: user?.fullName || 'Unknown',
-      sampleRecordId: sample.id,
-      sampleId: sample.sampleId,
-      reason: sample.status === 'Contaminated' ? 'Sample is contaminated' : '',
-    });
-    setConfirmRequestDelete(null);
-    setFlash('Your delete request has been submitted for approval by the Lead Researcher.');
-  };
-
-  const approve = (reqId) => {
-    const approved = approvePendingRequest(reqId);
-    if (!approved) return;
-    if (approved.type === 'edit') {
-      setFlash(`Edit request approved. Sample ${approved.sampleId} has been updated.`);
-    } else {
-      setFlash(`Delete request approved. Sample ${approved.sampleId} has been removed.`);
-    }
-  };
-
-  const reject = (reqId) => {
-    const rejected = rejectPendingRequest(reqId);
-    if (!rejected) return;
-    setFlash('Request rejected. No changes have been made.');
-  };
-
   if (!project) {
     return (
       <div className="space-y-4">
@@ -152,19 +102,6 @@ export default function ProjectDetail() {
           Back
         </Link>
       </div>
-
-      {flash && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-mint-50 border border-mint-200 text-mint-900 rounded-xl p-4 flex items-start justify-between gap-3 z-50 max-w-[90vw]">
-          <p className="text-sm">{flash}</p>
-          <button
-            type="button"
-            onClick={() => setFlash('')}
-            className="text-xs font-medium text-mint-800 hover:text-mint-900"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-6">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -198,74 +135,10 @@ export default function ProjectDetail() {
           <div><dt className="text-gray-500">Start Date</dt><dd>{project.startDate || '—'}</dd></div>
           <div><dt className="text-gray-500">End Date</dt><dd>{project.endDate || '—'}</dd></div>
           <div><dt className="text-gray-500">Lead Researcher</dt><dd>{project.leadResearcher || '—'}</dd></div>
-          <div><dt className="text-gray-500">Co-Researchers</dt><dd>{(project.coResearchers && project.coResearchers.length > 0) ? project.coResearchers.join(', ') : 'None'}</dd></div>
           <div><dt className="text-gray-500">Status</dt><dd>{project.status}</dd></div>
           <div><dt className="text-gray-500">Publication Status</dt><dd>{pubStatus}</dd></div>
         </dl>
       </div>
-
-      {canSeePendingQueue && (
-        <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-gray-800">Pending Requests</h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-              {pendingForProject.length} pending requests
-            </span>
-          </div>
-          {pendingForProject.length === 0 ? (
-            <p className="text-sm text-gray-500">No pending requests.</p>
-          ) : (
-            <div className="space-y-2">
-              {pendingForProject.map((req) => (
-                <div key={req.id} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm">
-                      <p className="font-medium text-gray-800">
-                        {req.type === 'edit' ? 'Edit Request' : 'Delete Request'}
-                        <span className="text-gray-400 font-normal"> · </span>
-                        <span className="font-mono">{req.sampleId}</span>
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Requested by <span className="font-medium">{req.requestedBy}</span> · {new Date(req.submittedAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => approve(req.id)}
-                        className="px-3 py-1.5 bg-mint-600 text-white text-xs font-medium rounded-lg hover:bg-mint-700"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => reject(req.id)}
-                        className="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                  {req.type === 'edit' && Array.isArray(req.changes) && req.changes.length > 0 && (
-                    <div className="mt-2 text-xs text-gray-700">
-                      {req.changes.map((c) => (
-                        <div key={c.field}>
-                          <span className="font-medium">{c.field}</span>: {String(c.from)} → {String(c.to)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {req.type === 'delete' && req.reason && (
-                    <p className="mt-2 text-xs text-gray-700">
-                      <span className="font-medium">Reason</span>: {req.reason}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -347,7 +220,7 @@ export default function ProjectDetail() {
                       >
                         View
                       </Link>
-                    {canEditSampleDirect(r) && (
+                      {canEditSample(r) && (
                         <Link
                           to={`/samples/${r.id}/edit`}
                           className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
@@ -355,16 +228,7 @@ export default function ProjectDetail() {
                           Edit
                         </Link>
                       )}
-                    {canRequestEdit(r) && (
-                      <Link
-                        to={`/samples/${r.id}/edit`}
-                        state={{ requestEdit: true, returnTo: `/projects/${project.id}` }}
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
-                      >
-                        Request Edit
-                      </Link>
-                    )}
-                    {canDeleteSampleDirect(r) && (
+                      {canDeleteSample(r) && (
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(r.id)}
@@ -373,15 +237,6 @@ export default function ProjectDetail() {
                           Delete
                         </button>
                       )}
-                    {canRequestDelete(r) && (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmRequestDelete(r)}
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
-                      >
-                        Request Delete
-                      </button>
-                    )}
                     </div>
                   </td>
                 </tr>
@@ -406,6 +261,7 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+<<<<<<< HEAD
 
       {confirmRequestDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -474,6 +330,8 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+=======
+>>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
     </div>
   );
 }
