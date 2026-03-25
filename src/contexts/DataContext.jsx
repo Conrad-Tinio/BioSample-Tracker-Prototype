@@ -9,6 +9,7 @@ import {
 } from '../data/mockData';
 import { setUserPassword } from '../store/authStore';
 import { generateUserId } from '../utils/userId';
+import { getProjectPublicationStatus } from '../utils/visibility';
 
 const DataContext = createContext(null);
 
@@ -19,7 +20,9 @@ function generateId(prefix = 'id') {
 export function DataProvider({ children }) {
   const [samples, setSamples] = useState(MOCK_SAMPLES_INITIAL);
   const [organisms, setOrganisms] = useState(MOCK_ORGANISMS);
-  const [projects, setProjects] = useState(MOCK_PROJECTS);
+  const [projects, setProjects] = useState(() =>
+    (MOCK_PROJECTS || []).map((p) => ({ ...p, publicationStatus: getProjectPublicationStatus(p) }))
+  );
   const [users, setUsers] = useState(MOCK_USERS.map((u) => ({ ...u, password: undefined })));
   const [activity, setActivity] = useState(MOCK_ACTIVITY_INITIAL);
   const [pendingRequests, setPendingRequests] = useState(MOCK_PENDING_REQUESTS_INITIAL);
@@ -124,14 +127,18 @@ export function DataProvider({ children }) {
   }, []);
 
   const addProject = useCallback((project) => {
-    const newProject = { ...project, id: project.id || generateId('proj') };
+    const newProject = {
+      ...project,
+      id: project.id || generateId('proj'),
+      publicationStatus: getProjectPublicationStatus(project),
+    };
     setProjects((prev) => [...prev, newProject]);
     return newProject;
   }, []);
 
   const updateProject = useCallback((id, updates) => {
     setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev.map((p) => (p.id === id ? { ...p, ...updates, publicationStatus: getProjectPublicationStatus({ ...p, ...updates }) } : p))
     );
   }, []);
 

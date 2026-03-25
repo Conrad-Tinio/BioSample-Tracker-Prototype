@@ -2,18 +2,20 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { canUserChangeProjectPublication, canUserViewProject, getProjectPublicationStatus } from '../utils/visibility';
 
 export default function ProjectDetail() {
   const { id } = useParams();
   const { user, isAdmin, isResearcher } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { projects, samples, organisms, deleteSample, addActivity, pendingRequests, submitDeleteRequest, approvePendingRequest, rejectPendingRequest } = useData();
+  const { projects, samples, organisms, deleteSample, addActivity, pendingRequests, submitDeleteRequest, approvePendingRequest, rejectPendingRequest, updateProject } = useData();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [confirmRequestDelete, setConfirmRequestDelete] = useState(null);
+  const [confirmPublication, setConfirmPublication] = useState(null);
   const [flash, setFlash] = useState('');
 
   const project = projects.find((p) => p.id === id);
@@ -49,9 +51,12 @@ export default function ProjectDetail() {
 
   const relatedSamples = useMemo(() => {
     if (!project) return [];
+    // Newest-first: later in array = more recent.
     return samples
-      .filter((s) => s.projectId === project.id)
-      .map((s) => ({
+      .map((s, idx) => ({ s, idx }))
+      .filter(({ s }) => s.projectId === project.id)
+      .sort((a, b) => b.idx - a.idx)
+      .map(({ s }) => ({
         ...s,
         organismName: getOrgName(s.organismId),
         projectName: getProjName(s.projectId),
@@ -127,6 +132,19 @@ export default function ProjectDetail() {
     );
   }
 
+  if (!canUserViewProject(user, project)) {
+    return (
+      <div className="max-w-xl mx-auto mt-12 text-center space-y-3">
+        <h1 className="text-xl font-semibold text-gray-800">Access Denied</h1>
+        <p className="text-gray-600">This project has not been published yet.</p>
+        <Link to="/projects" className="text-mint-600 font-medium hover:underline">Back to Projects</Link>
+      </div>
+    );
+  }
+
+  const pubStatus = getProjectPublicationStatus(project);
+  const canChangePublication = canUserChangeProjectPublication(user, project);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -149,7 +167,30 @@ export default function ProjectDetail() {
       )}
 
       <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-6">
-        <h1 className="text-xl font-bold text-gray-800 mb-4">Project Details</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <h1 className="text-xl font-bold text-gray-800">Project Details</h1>
+          {canChangePublication && (
+            <div className="flex flex-wrap gap-2">
+              {pubStatus === 'Draft' ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmPublication('publish')}
+                  className="px-4 py-2 bg-mint-600 text-white text-sm font-medium rounded-lg hover:bg-mint-700"
+                >
+                  Publish Project
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmPublication('unpublish')}
+                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700"
+                >
+                  Unpublish Project
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div><dt className="text-gray-500">Project ID</dt><dd className="font-medium">{project.id}</dd></div>
           <div><dt className="text-gray-500">Project Name</dt><dd className="font-medium">{project.name}</dd></div>
@@ -159,6 +200,7 @@ export default function ProjectDetail() {
           <div><dt className="text-gray-500">Lead Researcher</dt><dd>{project.leadResearcher || '—'}</dd></div>
           <div><dt className="text-gray-500">Co-Researchers</dt><dd>{(project.coResearchers && project.coResearchers.length > 0) ? project.coResearchers.join(', ') : 'None'}</dd></div>
           <div><dt className="text-gray-500">Status</dt><dd>{project.status}</dd></div>
+          <div><dt className="text-gray-500">Publication Status</dt><dd>{pubStatus}</dd></div>
         </dl>
       </div>
 
@@ -386,6 +428,47 @@ export default function ProjectDetail() {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
               >
                 Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmPublication && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+            <p className="font-medium text-gray-800 mb-2">
+              {confirmPublication === 'publish' ? 'Publish this project?' : 'Unpublish this project?'}
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              {confirmPublication === 'publish'
+                ? 'Are you sure you want to publish this project? Once published, this project and all of its samples will become visible to all researchers and students in the system.'
+                : 'Are you sure you want to unpublish this project? This project and all of its samples will be hidden from other researchers and students.'}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmPublication(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = confirmPublication === 'publish' ? 'Published' : 'Draft';
+                  updateProject(project.id, { publicationStatus: next });
+                  setConfirmPublication(null);
+                  setFlash(confirmPublication === 'publish'
+                    ? 'Project has been published successfully.'
+                    : 'Project has been unpublished and is now in Draft mode.'
+                  );
+                }}
+                className={`px-4 py-2 text-white rounded-lg text-sm font-medium ${
+                  confirmPublication === 'publish' ? 'bg-mint-600 hover:bg-mint-700' : 'bg-orange-600 hover:bg-orange-700'
+                }`}
+              >
+                Confirm
               </button>
             </div>
           </div>

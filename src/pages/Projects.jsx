@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { PROJECT_STATUSES } from '../data/mockData';
 import { generateProjectId } from '../utils/projectId';
+import { PUBLICATION_STATUSES, canUserViewProject, getVisibleSamples, getProjectPublicationStatus } from '../utils/visibility';
 
-function ProjectForm({ project, onSave, onCancel }) {
+function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
   const { users, projects } = useData();
   const activeResearchers = (users || []).filter(
     (u) => u.role === 'Researcher' && u.status === 'Active'
@@ -27,6 +28,7 @@ function ProjectForm({ project, onSave, onCancel }) {
     leadResearcher: project?.leadResearcher ?? '',
     coResearchers: project?.coResearchers ?? [],
     status: project?.status ?? 'Active',
+    publicationStatus: getProjectPublicationStatus(project),
   });
   const previewId = !isEdit && form.name && form.startDate
     ? generateProjectId(form.name, form.startDate, projects.length)
@@ -50,6 +52,7 @@ function ProjectForm({ project, onSave, onCancel }) {
         leadResearcher: lead,
         coResearchers: co,
         status: project?.status ?? 'Active',
+        publicationStatus: getProjectPublicationStatus(project),
       });
     } else {
       setForm({
@@ -60,6 +63,7 @@ function ProjectForm({ project, onSave, onCancel }) {
         leadResearcher: '',
         coResearchers: [],
         status: 'Active',
+        publicationStatus: 'Draft',
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,6 +184,20 @@ function ProjectForm({ project, onSave, onCancel }) {
           <option key={s} value={s}>{s}</option>
         ))}
       </select>
+      {canSetPublicationStatus && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Publication Status</label>
+          <select
+            value={form.publicationStatus}
+            onChange={(e) => setForm((f) => ({ ...f, publicationStatus: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          >
+            {PUBLICATION_STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="flex gap-2">
         <button type="submit" className="px-3 py-1.5 bg-mint-600 text-white text-sm rounded-lg hover:bg-mint-700">
           Save
@@ -193,7 +211,7 @@ function ProjectForm({ project, onSave, onCancel }) {
 }
 
 export default function Projects() {
-  const { user, canManageProjects, isResearcher } = useAuth();
+  const { user, canManageProjects, isResearcher, isAdmin } = useAuth();
   const { projects, samples, addProject, updateProject, deleteProject } = useData();
 
   const canEditProject = (p) =>
@@ -202,29 +220,43 @@ export default function Projects() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterPublication, setFilterPublication] = useState('All');
 
-  const countByProject = samples.reduce((acc, s) => {
+  const visibleSamples = getVisibleSamples(samples, projects, user);
+  const countByProject = visibleSamples.reduce((acc, s) => {
     acc[s.projectId] = (acc[s.projectId] || 0) + 1;
     return acc;
   }, {});
 
-  const filteredProjects = projects.filter((p) => {
+  const visibleProjects = projects.filter((p) => canUserViewProject(user, p));
+
+  const filteredProjects = visibleProjects.filter((p) => {
     const q = search.toLowerCase();
     const matchSearch = !search || [p.name, p.description, p.leadResearcher].some((v) => String(v ?? '').toLowerCase().includes(q));
     const matchStatus = !filterStatus || p.status === filterStatus;
-    return matchSearch && matchStatus;
+    const pub = getProjectPublicationStatus(p);
+    const matchPublication = filterPublication === 'All' || pub === filterPublication;
+    return matchSearch && matchStatus && matchPublication;
   });
 
   const clearFilters = () => {
     setSearch('');
     setFilterStatus('');
+    setFilterPublication('All');
   };
 
   const handleSave = (data) => {
     if (modal === 'new') {
       const id = generateProjectId(data.name, data.startDate, projects.length);
-      addProject({ ...data, id });
-    } else if (modal?.id) updateProject(modal.id, data);
+      const payload = canManageProjects ? data : { ...data, publicationStatus: 'Draft' };
+      addProject({ ...payload, id });
+    } else if (modal?.id) {
+      const existing = projects.find((p) => p.id === modal.id);
+      const payload = canManageProjects
+        ? data
+        : { ...data, publicationStatus: existing?.publicationStatus };
+      updateProject(modal.id, payload);
+    }
     setModal(null);
   };
 
@@ -266,6 +298,17 @@ export default function Projects() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          {(isAdmin || isResearcher) && (
+            <select
+              value={filterPublication}
+              onChange={(e) => setFilterPublication(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-mint-500"
+            >
+              <option value="All">All Publication</option>
+              <option value="Published">Published</option>
+              <option value="Draft">Draft</option>
+            </select>
+          )}
           <button type="button" onClick={clearFilters} className="text-sm text-mint-600 hover:text-mint-800 font-medium">
             Clear Filters
           </button>
@@ -300,12 +343,19 @@ export default function Projects() {
                   {(p.coResearchers && p.coResearchers.length > 0) ? p.coResearchers.join(', ') : 'None'}
                 </td>
                 <td className="py-2 px-4">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    p.status === 'Active' ? 'bg-green-100 text-green-800' :
-                    p.status === 'Completed' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {p.status}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      p.status === 'Active' ? 'bg-green-100 text-green-800' :
+                      p.status === 'Completed' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {p.status}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      getProjectPublicationStatus(p) === 'Published' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {getProjectPublicationStatus(p)}
+                    </span>
+                  </div>
                 </td>
                 <td className="py-2 px-4">{countByProject[p.id] ?? 0}</td>
                 <td className="py-2 px-4">
@@ -355,6 +405,7 @@ export default function Projects() {
               project={modal === 'new' ? null : modal.project}
               onSave={handleSave}
               onCancel={() => setModal(null)}
+              canSetPublicationStatus={canManageProjects}
             />
           </div>
         </div>

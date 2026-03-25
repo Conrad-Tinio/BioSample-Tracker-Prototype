@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { exportSamplesCSV, exportSamplesPDF } from '../utils/export';
+import { getVisibleProjects, getVisibleSamples } from '../utils/visibility';
 
 export default function Samples() {
   const navigate = useNavigate();
@@ -18,13 +19,16 @@ export default function Samples() {
   const getOrgName = (id) => organisms.find((o) => o.id === id)?.scientificName ?? '';
   const getProjName = (id) => projects.find((p) => p.id === id)?.name ?? '';
 
+  const visibleProjects = useMemo(() => getVisibleProjects(projects, user), [projects, user]);
+  const visibleSamples = useMemo(() => getVisibleSamples(samples, projects, user), [samples, projects, user]);
+
   const rows = useMemo(() => {
-    return samples.map((s) => ({
+    return visibleSamples.map((s) => ({
       ...s,
       organismName: getOrgName(s.organismId),
       projectName: getProjName(s.projectId),
     }));
-  }, [samples, organisms, projects]);
+  }, [visibleSamples, organisms, projects]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -135,7 +139,7 @@ export default function Samples() {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-mint-500"
           >
             <option value="">All Projects</option>
-            {projects.map((p) => (
+            {visibleProjects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>

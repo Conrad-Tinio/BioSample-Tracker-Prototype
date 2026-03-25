@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { getVisibleProjects, getVisibleSamples } from '../utils/visibility';
 import {
   BarChart,
   Bar,
@@ -18,44 +19,47 @@ const STATUS_COLORS = { Active: '#22c55e', Used: '#3b82f6', Expired: '#f59e0b', 
 const CHART_COLORS = ['#2dd4bf', '#14b8a6', '#0d9488', '#0f766e', '#115e59', '#134e4a'];
 
 export default function Dashboard() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { samples, projects, organisms, users, activity, pendingCount } = useData();
 
+  const visibleProjects = useMemo(() => getVisibleProjects(projects, user), [projects, user]);
+  const visibleSamples = useMemo(() => getVisibleSamples(samples, projects, user), [samples, projects, user]);
+
   const stats = [
-    { label: 'Total Samples', value: samples.length, color: 'bg-mint-500' },
-    { label: 'Total Projects', value: projects.length, color: 'bg-teal-500' },
+    { label: 'Total Samples', value: visibleSamples.length, color: 'bg-mint-500' },
+    { label: 'Total Projects', value: visibleProjects.length, color: 'bg-teal-500' },
     { label: 'Total Organisms', value: organisms.length, color: 'bg-emerald-500' },
     ...(isAdmin ? [{ label: 'Total Users', value: users.length, color: 'bg-cyan-500' }] : []),
     ...(isAdmin ? [{ label: 'Pending Approvals', value: pendingCount, color: 'bg-amber-500' }] : []),
   ];
 
   const samplesByProject = useMemo(() => {
-    const countByProject = samples.reduce((acc, s) => {
+    const countByProject = visibleSamples.reduce((acc, s) => {
       acc[s.projectId] = (acc[s.projectId] || 0) + 1;
       return acc;
     }, {});
-    return projects
+    return visibleProjects
       .map((p) => ({ name: p.name.length > 18 ? p.name.slice(0, 18) + '…' : p.name, samples: countByProject[p.id] ?? 0 }))
       .filter((d) => d.samples > 0)
       .sort((a, b) => b.samples - a.samples)
       .slice(0, 8);
-  }, [samples, projects]);
+  }, [visibleSamples, visibleProjects]);
 
   const samplesByStatus = useMemo(() => {
-    const countByStatus = samples.reduce((acc, s) => {
+    const countByStatus = visibleSamples.reduce((acc, s) => {
       acc[s.status] = (acc[s.status] || 0) + 1;
       return acc;
     }, {});
     return Object.entries(countByStatus).map(([name, value]) => ({ name, value }));
-  }, [samples]);
+  }, [visibleSamples]);
 
   const samplesByType = useMemo(() => {
-    const countByType = samples.reduce((acc, s) => {
+    const countByType = visibleSamples.reduce((acc, s) => {
       acc[s.sampleType] = (acc[s.sampleType] || 0) + 1;
       return acc;
     }, {});
     return Object.entries(countByType).map(([name, value]) => ({ name, value }));
-  }, [samples]);
+  }, [visibleSamples]);
 
   return (
     <div className="space-y-6">
