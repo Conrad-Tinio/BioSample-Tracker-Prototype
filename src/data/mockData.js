@@ -20,46 +20,11 @@ export const MOCK_ORGANISMS = [
 
 // Test projects (at least 5) - IDs: [INITIALS]-[START_YEAR]-[INCREMENT]
 export const MOCK_PROJECTS = [
-<<<<<<< HEAD
   { id: 'HGV-2023-001', name: 'Human Genome Variant Study', description: 'Investigating genetic variants associated with rare diseases in Filipino populations.', startDate: '2023-06-01', endDate: null, leadResearcher: 'Dr. Maria Santos', coResearchers: ['Dr. Juan Dela Cruz'], status: 'Active', publicationStatus: 'Published' },
   { id: 'RBR-2023-002', name: 'Rice Blast Resistance Genes', description: 'Identifying resistance genes in Philippine rice cultivars against Magnaporthe oryzae.', startDate: '2023-08-15', endDate: null, leadResearcher: 'Dr. Juan Dela Cruz', coResearchers: ['Dr. Maria Santos'], status: 'Active', publicationStatus: 'Published' },
   { id: 'ECA-2022-003', name: 'E. coli Antibiotic Resistance', description: 'Mapping antibiotic resistance patterns in clinical E. coli isolates.', startDate: '2022-01-10', endDate: '2024-01-30', leadResearcher: 'Dr. Liza Aquino', coResearchers: [], status: 'Completed', publicationStatus: 'Published' },
   { id: 'ZND-2023-004', name: 'Zebrafish Neural Development', description: 'Studying neural crest cell migration in zebrafish embryos.', startDate: '2023-09-01', endDate: null, leadResearcher: 'Dr. Marco Rivera', coResearchers: ['Dr. Juan Dela Cruz', 'Dr. Sofia Garcia'], status: 'Active', publicationStatus: 'Draft' },
   { id: 'YFG-2023-005', name: 'Yeast Fermentation Genomics', description: 'Characterizing genomic adaptations in yeast under industrial fermentation conditions.', startDate: '2023-03-01', endDate: null, leadResearcher: 'Dr. Sofia Garcia', coResearchers: [], status: 'On Hold', publicationStatus: 'Draft' },
-];
-
-// Mock pending requests for demo purposes (stored in local state; no backend)
-export const MOCK_PENDING_REQUESTS_INITIAL = [
-  {
-    id: 'pr-1',
-    projectId: 'HGV-2023-001',
-    type: 'edit',
-    requestedBy: 'Dr. Juan Dela Cruz',
-    sampleRecordId: 's2',
-    sampleId: 'HGV-RNA-002',
-    submittedAt: '2026-03-25T09:00:00.000Z',
-    changes: [
-      { field: 'status', from: 'Active', to: 'Used' },
-    ],
-    proposedUpdates: { status: 'Used' },
-  },
-  {
-    id: 'pr-2',
-    projectId: 'HGV-2023-001',
-    type: 'delete',
-    requestedBy: 'Dr. Juan Dela Cruz',
-    sampleRecordId: 's7',
-    sampleId: 'HGV-BLD-007',
-    submittedAt: '2026-03-25T09:05:00.000Z',
-    reason: 'Sample is contaminated',
-  },
-=======
-  { id: 'HGV-2023-001', name: 'Human Genome Variant Study', description: 'Investigating genetic variants associated with rare diseases in Filipino populations.', startDate: '2023-06-01', endDate: null, leadResearcher: 'Dr. Maria Santos', status: 'Active' },
-  { id: 'RBR-2023-002', name: 'Rice Blast Resistance Genes', description: 'Identifying resistance genes in Philippine rice cultivars against Magnaporthe oryzae.', startDate: '2023-08-15', endDate: null, leadResearcher: 'Dr. Juan Dela Cruz', status: 'Active' },
-  { id: 'ECA-2022-003', name: 'E. coli Antibiotic Resistance', description: 'Mapping antibiotic resistance patterns in clinical E. coli isolates.', startDate: '2022-01-10', endDate: '2024-01-30', leadResearcher: 'Dr. Liza Aquino', status: 'Completed' },
-  { id: 'ZND-2023-004', name: 'Zebrafish Neural Development', description: 'Studying neural crest cell migration in zebrafish embryos.', startDate: '2023-09-01', endDate: null, leadResearcher: 'Dr. Marco Rivera', status: 'Active' },
-  { id: 'YFG-2023-005', name: 'Yeast Fermentation Genomics', description: 'Characterizing genomic adaptations in yeast under industrial fermentation conditions.', startDate: '2023-03-01', endDate: null, leadResearcher: 'Dr. Sofia Garcia', status: 'On Hold' },
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
 ];
 
 // Test samples (at least 15) - with client columns: Sample ID, Disease, Organism, Sample Type, Tissue Source, Study Purpose, Project

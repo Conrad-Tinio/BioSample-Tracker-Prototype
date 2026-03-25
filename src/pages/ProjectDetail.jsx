@@ -7,23 +7,12 @@ import { canUserChangeProjectPublication, canUserViewProject, getProjectPublicat
 export default function ProjectDetail() {
   const { id } = useParams();
   const { user, isAdmin, isResearcher } = useAuth();
-<<<<<<< HEAD
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { projects, samples, organisms, deleteSample, addActivity, pendingRequests, submitDeleteRequest, approvePendingRequest, rejectPendingRequest, updateProject } = useData();
-=======
-  const { projects, samples, organisms, deleteSample, addActivity } = useData();
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
+  const { projects, samples, organisms, deleteSample, addActivity, updateProject } = useData();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-<<<<<<< HEAD
-  const [confirmRequestDelete, setConfirmRequestDelete] = useState(null);
   const [confirmPublication, setConfirmPublication] = useState(null);
-  const [flash, setFlash] = useState('');
-=======
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
 
   const project = projects.find((p) => p.id === id);
   const getOrgName = (oid) => organisms.find((o) => o.id === oid)?.scientificName ?? '';
@@ -135,6 +124,10 @@ export default function ProjectDetail() {
           <div><dt className="text-gray-500">Start Date</dt><dd>{project.startDate || '—'}</dd></div>
           <div><dt className="text-gray-500">End Date</dt><dd>{project.endDate || '—'}</dd></div>
           <div><dt className="text-gray-500">Lead Researcher</dt><dd>{project.leadResearcher || '—'}</dd></div>
+          <div className="sm:col-span-2">
+            <dt className="text-gray-500">Co-Researchers</dt>
+            <dd>{(Array.isArray(project.coResearchers) && project.coResearchers.length > 0) ? project.coResearchers.join(', ') : '—'}</dd>
+          </div>
           <div><dt className="text-gray-500">Status</dt><dd>{project.status}</dd></div>
           <div><dt className="text-gray-500">Publication Status</dt><dd>{pubStatus}</dd></div>
         </dl>
@@ -261,34 +254,6 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
-<<<<<<< HEAD
-
-      {confirmRequestDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <p className="font-medium text-gray-800 mb-2">Request deletion of this sample?</p>
-            <p className="text-sm text-gray-500 mb-4">
-              Are you sure you want to request deletion of this sample? The Lead Researcher will need to approve this request.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setConfirmRequestDelete(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRequestDelete(confirmRequestDelete)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
-              >
-                Submit Request
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {confirmPublication && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -315,10 +280,6 @@ export default function ProjectDetail() {
                   const next = confirmPublication === 'publish' ? 'Published' : 'Draft';
                   updateProject(project.id, { publicationStatus: next });
                   setConfirmPublication(null);
-                  setFlash(confirmPublication === 'publish'
-                    ? 'Project has been published successfully.'
-                    : 'Project has been unpublished and is now in Draft mode.'
-                  );
                 }}
                 className={`px-4 py-2 text-white rounded-lg text-sm font-medium ${
                   confirmPublication === 'publish' ? 'bg-mint-600 hover:bg-mint-700' : 'bg-orange-600 hover:bg-orange-700'
@@ -330,8 +291,6 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
-=======
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
     </div>
   );
 }

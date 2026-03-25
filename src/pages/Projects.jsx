@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -18,56 +18,66 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
     startDate: project?.startDate ?? '',
     endDate: project?.endDate ?? '',
     leadResearcher: project?.leadResearcher ?? '',
+    coResearchers: Array.isArray(project?.coResearchers) ? project.coResearchers : [],
     status: project?.status ?? 'Active',
     publicationStatus: getProjectPublicationStatus(project),
   });
   const previewId = !isEdit && form.name && form.startDate
-    ? generateProjectId(form.name, form.startDate, projects.length)
+    ? generateProjectId(form.name, form.startDate, projects)
     : '';
 
-<<<<<<< HEAD
-  const availableCoResearchers = activeResearchers
-    .concat(activeCoResearcherCandidates.filter((r) => r.role === 'Admin'))
-    .map((r) => r.fullName)
-    .filter((name) => name && name !== form.leadResearcher);
-
-  // Keep form state in sync with the project being edited.
   useEffect(() => {
     if (isEdit) {
-      const lead = project?.leadResearcher ?? '';
-      const co = (project?.coResearchers ?? []).filter((n) => n !== lead);
       setForm({
         name: project?.name ?? '',
         description: project?.description ?? '',
         startDate: project?.startDate ?? '',
         endDate: project?.endDate ?? '',
-        leadResearcher: lead,
-        coResearchers: co,
+        leadResearcher: project?.leadResearcher ?? '',
+        coResearchers: Array.isArray(project?.coResearchers) ? project.coResearchers : [],
         status: project?.status ?? 'Active',
         publicationStatus: getProjectPublicationStatus(project),
       });
-    } else {
-      setForm({
-        name: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        leadResearcher: '',
-        coResearchers: [],
-        status: 'Active',
-        publicationStatus: 'Draft',
-      });
+      return;
     }
+    setForm({
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      leadResearcher: '',
+      coResearchers: [],
+      status: 'Active',
+      publicationStatus: 'Draft',
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, isEdit]);
 
-=======
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
+  const availableCoResearchers = useMemo(() => {
+    const list = (users || [])
+      .filter((u) => u.status === 'Active' && (u.role === 'Researcher' || u.role === 'Admin'))
+      .map((u) => u.fullName)
+      .filter(Boolean);
+    return [...new Set(list)].filter((name) => name !== form.leadResearcher);
+  }, [users, form.leadResearcher]);
+
+  useEffect(() => {
+    setForm((f) => ({
+      ...f,
+      coResearchers: (Array.isArray(f.coResearchers) ? f.coResearchers : []).filter((n) => n && n !== f.leadResearcher),
+    }));
+  }, [form.leadResearcher]);
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(form);
+        const cleaned = {
+          ...form,
+          coResearchers: (Array.isArray(form.coResearchers) ? form.coResearchers : [])
+            .filter((n) => n && n !== form.leadResearcher),
+        };
+        onSave(cleaned);
       }}
       className="space-y-3"
     >
@@ -113,6 +123,7 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
           value={form.startDate}
           onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          required
         />
         <input
           type="date"
@@ -139,6 +150,28 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
           </>
         )}
       </select>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Co-Researchers</label>
+        <select
+          multiple
+          size={Math.min(6, Math.max(3, availableCoResearchers.length))}
+          value={form.coResearchers}
+          onChange={(e) => {
+            const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+            setForm((f) => ({ ...f, coResearchers: selected }));
+          }}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        >
+          {availableCoResearchers.length === 0 ? (
+            <option value="" disabled>No eligible co-researchers available.</option>
+          ) : (
+            availableCoResearchers.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))
+          )}
+        </select>
+        <p className="text-xs text-gray-500 mt-1">Hold Ctrl (or Cmd) to select multiple.</p>
+      </div>
       <select
         value={form.status}
         onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
@@ -193,6 +226,10 @@ export default function Projects() {
   }, {});
 
   const visibleProjects = projects.filter((p) => canUserViewProject(user, p));
+  const projectOrder = useMemo(
+    () => new Map(projects.map((p, idx) => [p.id, idx])),
+    [projects]
+  );
 
   const filteredProjects = visibleProjects.filter((p) => {
     const q = search.toLowerCase();
@@ -201,7 +238,7 @@ export default function Projects() {
     const pub = getProjectPublicationStatus(p);
     const matchPublication = filterPublication === 'All' || pub === filterPublication;
     return matchSearch && matchStatus && matchPublication;
-  });
+  }).sort((a, b) => (projectOrder.get(b.id) ?? 0) - (projectOrder.get(a.id) ?? 0));
 
   const clearFilters = () => {
     setSearch('');
@@ -211,7 +248,14 @@ export default function Projects() {
 
   const handleSave = (data) => {
     if (modal === 'new') {
-      const id = generateProjectId(data.name, data.startDate, projects.length);
+      const id = generateProjectId(data.name, data.startDate, projects);
+      if (!id) {
+        // Prevent creating a project with fallback "proj-..." id.
+        // Start Date is required to compute the START YEAR part of the ID.
+        // eslint-disable-next-line no-alert
+        alert('Please provide a Project Name and Start Date to generate a Project ID (ABC-YYYY-###).');
+        return;
+      }
       const payload = canManageProjects ? data : { ...data, publicationStatus: 'Draft' };
       addProject({ ...payload, id });
     } else if (modal?.id) {
@@ -284,10 +328,10 @@ export default function Projects() {
             <tr>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Project ID</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Project Name</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700">Description</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Start Date</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">End Date</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Lead Researcher</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700">Co-Researchers</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700"># Samples</th>
               <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -298,13 +342,11 @@ export default function Projects() {
               <tr key={p.id} className="border-b border-mint-50 hover:bg-mint-50/50">
                 <td className="py-2 px-4">{p.id}</td>
                 <td className="py-2 px-4 font-medium">{p.name}</td>
-                <td className="py-2 px-4 max-w-xs truncate">{p.description}</td>
                 <td className="py-2 px-4">{p.startDate || '—'}</td>
                 <td className="py-2 px-4">{p.endDate || '—'}</td>
                 <td className="py-2 px-4">{p.leadResearcher}</td>
-                <td className="py-2 px-4">
-<<<<<<< HEAD
-                  {(p.coResearchers && p.coResearchers.length > 0) ? p.coResearchers.join(', ') : 'None'}
+                <td className="py-2 px-4 max-w-xs truncate">
+                  {(Array.isArray(p.coResearchers) && p.coResearchers.length > 0) ? p.coResearchers.join(', ') : '—'}
                 </td>
                 <td className="py-2 px-4">
                   <div className="flex flex-wrap items-center gap-2">
@@ -320,21 +362,13 @@ export default function Projects() {
                       {getProjectPublicationStatus(p)}
                     </span>
                   </div>
-=======
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    p.status === 'Active' ? 'bg-green-100 text-green-800' :
-                    p.status === 'Completed' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {p.status}
-                  </span>
->>>>>>> parent of 274b044 (Added Co-Researcher Role and Feature)
                 </td>
                 <td className="py-2 px-4">{countByProject[p.id] ?? 0}</td>
-                <td className="py-2 px-4">
-                  <div className="flex flex-wrap gap-1.5">
+                <td className="py-2 px-4 whitespace-nowrap">
+                  <div className="flex flex-nowrap items-center gap-1">
                     <Link
                       to={`/projects/${p.id}`}
-                      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                      className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                     >
                       View
                     </Link>
@@ -343,14 +377,14 @@ export default function Projects() {
                         <button
                           type="button"
                           onClick={() => setModal({ id: p.id, project: p })}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
+                          className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDelete(p.id)}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                          className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
                         >
                           Delete
                         </button>

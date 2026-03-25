@@ -192,18 +192,18 @@ export default function Samples() {
                   <td className="py-2 px-4">{r.tissueSource ?? '—'}</td>
                   <td className="py-2 px-4">{r.studyPurpose ?? '—'}</td>
                   <td className="py-2 px-4">{r.projectName}</td>
-                  <td className="py-2 px-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-1.5">
+                  <td className="py-2 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-nowrap items-center gap-1">
                         <Link
                           to={`/samples/${r.id}`}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                          className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
                         >
                           View
                         </Link>
                         {canEditSample(r) && (
                           <Link
                             to={`/samples/${r.id}/edit`}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
+                            className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium bg-mint-600 text-white hover:bg-mint-700 transition-colors shadow-sm"
                           >
                             Edit
                           </Link>
@@ -212,7 +212,7 @@ export default function Samples() {
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); setConfirmDelete(r.id); }}
-                            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                            className="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
                           >
                             Delete
                           </button>
