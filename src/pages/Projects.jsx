@@ -6,7 +6,7 @@ import { PROJECT_STATUSES } from '../data/mockData';
 import { generateProjectId } from '../utils/projectId';
 import { PUBLICATION_STATUSES, canUserViewProject, getVisibleSamples, getProjectPublicationStatus } from '../utils/visibility';
 
-function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
+function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus, canEditLeadResearcher }) {
   const { users, projects } = useData();
   const activeResearchers = (users || []).filter(
     (u) => u.role === 'Researcher' && u.status === 'Active'
@@ -136,8 +136,11 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
       <select
         value={form.leadResearcher}
         onChange={(e) => setForm((f) => ({ ...f, leadResearcher: e.target.value }))}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        className={`w-full px-3 py-2 border rounded-lg text-sm ${
+          canEditLeadResearcher ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed'
+        }`}
         required={activeResearchers.length > 0}
+        disabled={!canEditLeadResearcher}
       >
         {activeResearchers.length === 0 ? (
           <option value="" disabled>No active researchers available.</option>
@@ -150,27 +153,43 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
           </>
         )}
       </select>
+      {!canEditLeadResearcher && (
+        <p className="text-xs text-gray-500">
+          Lead Researcher can only be changed by an Admin.
+        </p>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Co-Researchers</label>
-        <select
-          multiple
-          size={Math.min(6, Math.max(3, availableCoResearchers.length))}
-          value={form.coResearchers}
-          onChange={(e) => {
-            const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-            setForm((f) => ({ ...f, coResearchers: selected }));
-          }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        >
-          {availableCoResearchers.length === 0 ? (
-            <option value="" disabled>No eligible co-researchers available.</option>
-          ) : (
-            availableCoResearchers.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))
-          )}
-        </select>
-        <p className="text-xs text-gray-500 mt-1">Hold Ctrl (or Cmd) to select multiple.</p>
+        {availableCoResearchers.length === 0 ? (
+          <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50">
+            No eligible co-researchers available.
+          </div>
+        ) : (
+          <div className="border border-gray-300 rounded-lg p-3 max-h-44 overflow-auto space-y-2">
+            {availableCoResearchers.map((name) => {
+              const checked = Array.isArray(form.coResearchers) && form.coResearchers.includes(name);
+              return (
+                <label key={name} className="flex items-center gap-2 text-sm text-gray-800 select-none">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setForm((f) => {
+                        const prev = Array.isArray(f.coResearchers) ? f.coResearchers : [];
+                        if (isChecked) return { ...f, coResearchers: [...new Set([...prev, name])] };
+                        return { ...f, coResearchers: prev.filter((n) => n !== name) };
+                      });
+                    }}
+                    className="h-4 w-4 accent-mint-600"
+                  />
+                  <span>{name}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-xs text-gray-500 mt-1">Click to select one or more co-researchers.</p>
       </div>
       <select
         value={form.status}
@@ -209,7 +228,7 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus }) {
 
 export default function Projects() {
   const { user, canManageProjects, isResearcher, isAdmin } = useAuth();
-  const { projects, samples, addProject, updateProject, deleteProject } = useData();
+  const { projects, samples, addProject, updateProject, deleteProject, sendCoResearcherInvites, coResearcherInvites, respondToCoResearcherInvite } = useData();
 
   const canEditProject = (p) =>
     canManageProjects || (isResearcher && p.leadResearcher === user?.fullName);
@@ -260,13 +279,49 @@ export default function Projects() {
       addProject({ ...payload, id });
     } else if (modal?.id) {
       const existing = projects.find((p) => p.id === modal.id);
-      const payload = canManageProjects
+      const payloadBase = canManageProjects
         ? data
         : { ...data, publicationStatus: existing?.publicationStatus };
+
+      // Co-Researcher invitation workflow:
+      // - additions become invites (not immediately added)
+      // - removals apply immediately
+      const prevCo = Array.isArray(existing?.coResearchers) ? existing.coResearchers : [];
+      const nextCo = Array.isArray(payloadBase?.coResearchers) ? payloadBase.coResearchers : [];
+      const added = nextCo.filter((n) => n && !prevCo.includes(n));
+      const removed = prevCo.filter((n) => n && !nextCo.includes(n));
+
+      // If an Admin adds themselves as a Co-Researcher, apply immediately (no invite needed).
+      const adminSelf = isAdmin && user?.fullName ? user.fullName : null;
+      const selfAdded = adminSelf ? added.includes(adminSelf) : false;
+      const inviteAdded = selfAdded ? added.filter((n) => n !== adminSelf) : added;
+
+      if (inviteAdded.length > 0) {
+        sendCoResearcherInvites({
+          projectId: existing.id,
+          invitedBy: user?.fullName || 'Unknown',
+          invitedToList: inviteAdded,
+        });
+        const msg = `Co-Researcher invite${inviteAdded.length > 1 ? 's' : ''} sent for ${existing.name}: ${inviteAdded.join(', ')}`;
+        try { window.dispatchEvent(new CustomEvent('biosample_flash', { detail: { message: msg, variant: 'success' } })); } catch {}
+      }
+
+      const payload = {
+        ...payloadBase,
+        coResearchers: (() => {
+          const base = removed.length > 0 ? prevCo.filter((n) => !removed.includes(n)) : prevCo;
+          if (selfAdded && adminSelf && !base.includes(adminSelf)) return [...base, adminSelf];
+          return base;
+        })(),
+      };
       updateProject(modal.id, payload);
     }
     setModal(null);
   };
+
+  const myInvites = (coResearcherInvites || []).filter(
+    (i) => i.status === 'Pending' && i.invitedTo === user?.fullName
+  );
 
   const handleDelete = (id) => {
     deleteProject(id);
@@ -287,6 +342,60 @@ export default function Projects() {
           </button>
         )}
       </div>
+
+      {myInvites.length > 0 && (
+        <div className="bg-white rounded-xl border border-mint-100 shadow-sm p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-800">Co-Researcher Invitations</h2>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              {myInvites.length} pending
+            </span>
+          </div>
+          <div className="space-y-2">
+            {myInvites.map((inv) => {
+              const proj = projects.find((p) => p.id === inv.projectId);
+              return (
+                <div key={inv.id} className="border border-gray-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-800">{proj?.name || inv.projectId}</p>
+                    <p className="text-xs text-gray-500">
+                      Invited by <span className="font-medium">{inv.invitedBy}</span> · {new Date(inv.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const res = respondToCoResearcherInvite(inv.id, 'Accepted');
+                        const msg = res
+                          ? `Invitation accepted. You are now a Co-Researcher on ${proj?.name || inv.projectId}.`
+                          : 'Invitation accepted.';
+                        try { window.dispatchEvent(new CustomEvent('biosample_flash', { detail: { message: msg, variant: 'success' } })); } catch {}
+                      }}
+                      className="px-3 py-1.5 bg-mint-600 text-white text-xs font-medium rounded-lg hover:bg-mint-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const res = respondToCoResearcherInvite(inv.id, 'Declined');
+                        const msg = res
+                          ? `Invitation declined for ${proj?.name || inv.projectId}.`
+                          : 'Invitation declined.';
+                        try { window.dispatchEvent(new CustomEvent('biosample_flash', { detail: { message: msg, variant: 'error' } })); } catch {}
+                      }}
+                      className="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-xl border border-mint-100 p-4 shadow-sm space-y-3">
         <div className="flex flex-wrap gap-3 items-center">
           <input
@@ -412,6 +521,7 @@ export default function Projects() {
               onSave={handleSave}
               onCancel={() => setModal(null)}
               canSetPublicationStatus={canManageProjects}
+              canEditLeadResearcher={isAdmin}
             />
           </div>
         </div>

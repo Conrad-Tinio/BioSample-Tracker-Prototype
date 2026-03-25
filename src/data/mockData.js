@@ -2,6 +2,9 @@
 export const MOCK_USERS = [
   { id: 'ADM-DMS-001', email: 'admin@biosample.com', password: 'admin123', fullName: 'Dr. Maria Santos', role: 'Admin', status: 'Active', dateCreated: '2024-01-15', createdBy: 'System' },
   { id: 'RES-DJDC-002', email: 'researcher@biosample.com', password: 'research123', fullName: 'Dr. Juan Dela Cruz', role: 'Researcher', status: 'Active', dateCreated: '2024-02-01', createdBy: 'Dr. Maria Santos' },
+  { id: 'RES-DMR-005', email: 'rivera@biosample.com', password: 'research123', fullName: 'Dr. Marco Rivera', role: 'Researcher', status: 'Active', dateCreated: '2024-02-05', createdBy: 'Dr. Maria Santos' },
+  { id: 'RES-DSG-006', email: 'garcia@biosample.com', password: 'research123', fullName: 'Dr. Sofia Garcia', role: 'Researcher', status: 'Active', dateCreated: '2024-02-06', createdBy: 'Dr. Maria Santos' },
+  { id: 'RES-DLA-007', email: 'aquino@biosample.com', password: 'research123', fullName: 'Dr. Liza Aquino', role: 'Researcher', status: 'Active', dateCreated: '2024-02-07', createdBy: 'Dr. Maria Santos' },
   { id: 'STU-AR-003', email: 'student@biosample.com', password: 'student123', fullName: 'Ana Reyes', role: 'Student', status: 'Active', dateCreated: '2024-02-10', createdBy: 'Dr. Maria Santos' },
   { id: 'RES-CM-004', email: 'pending@biosample.com', password: 'pending123', fullName: 'Carlo Mendoza', role: 'Researcher', status: 'Pending', dateCreated: '2024-02-26', createdBy: 'Self', pendingDaysRemaining: 2 },
 ];
@@ -63,3 +66,30 @@ export const PROJECT_STATUSES = ['Active', 'Completed', 'On Hold'];
 export const KINGDOMS = ['Animalia', 'Plantae', 'Fungi', 'Bacteria', 'Archaea'];
 export const ROLES = ['Admin', 'Researcher', 'Student'];
 export const ACCOUNT_STATUSES = ['Active', 'Pending', 'Deactivated'];
+
+// Mock pending requests for demo purposes (stored in local state; no backend)
+export const MOCK_PENDING_REQUESTS_INITIAL = [
+  {
+    id: 'pr-1',
+    projectId: 'HGV-2023-001',
+    type: 'edit',
+    requestedBy: 'Dr. Juan Dela Cruz',
+    sampleRecordId: 's2',
+    sampleId: 'HGV-RNA-002',
+    submittedAt: '2026-03-25T09:00:00.000Z',
+    changes: [
+      { field: 'status', from: 'Active', to: 'Used' },
+    ],
+    proposedUpdates: { status: 'Used' },
+  },
+  {
+    id: 'pr-2',
+    projectId: 'HGV-2023-001',
+    type: 'delete',
+    requestedBy: 'Dr. Juan Dela Cruz',
+    sampleRecordId: 's7',
+    sampleId: 'HGV-BLD-007',
+    submittedAt: '2026-03-25T09:05:00.000Z',
+    reason: 'Sample is contaminated',
+  },
+];
