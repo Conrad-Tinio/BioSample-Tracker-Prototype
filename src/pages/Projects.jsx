@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { PROJECT_STATUSES } from '../data/mockData';
@@ -227,6 +227,7 @@ function ProjectForm({ project, onSave, onCancel, canSetPublicationStatus, canEd
 }
 
 export default function Projects() {
+  const location = useLocation();
   const { user, canManageProjects, isResearcher, isAdmin } = useAuth();
   const { projects, samples, addProject, updateProject, deleteProject, sendCoResearcherInvites, coResearcherInvites, respondToCoResearcherInvite } = useData();
 
@@ -237,6 +238,12 @@ export default function Projects() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPublication, setFilterPublication] = useState('All');
+
+  useEffect(() => {
+    const incoming = location.state?.filterPublication;
+    if (!incoming) return;
+    setFilterPublication(incoming);
+  }, [location.state]);
 
   const visibleSamples = getVisibleSamples(samples, projects, user);
   const countByProject = visibleSamples.reduce((acc, s) => {

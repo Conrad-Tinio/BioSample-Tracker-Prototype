@@ -93,3 +93,32 @@ export const MOCK_PENDING_REQUESTS_INITIAL = [
     reason: 'Sample is contaminated',
   },
 ];
+
+// Mock co-researcher invites for demo purposes (pending by default)
+// `hoursAgo` is converted to `createdAt` ISO when state initializes.
+export const MOCK_CO_RESEARCHER_INVITES_INITIAL = [
+  {
+    id: 'inv-seed-1',
+    projectId: 'HGV-2023-001',
+    invitedBy: 'Dr. Maria Santos',
+    invitedTo: 'Dr. Juan Dela Cruz',
+    status: 'Pending',
+    hoursAgo: 2,
+  },
+  {
+    id: 'inv-seed-2',
+    projectId: 'ZND-2023-004',
+    invitedBy: 'Dr. Marco Rivera',
+    invitedTo: 'Dr. Juan Dela Cruz',
+    status: 'Pending',
+    hoursAgo: 24,
+  },
+  {
+    id: 'inv-seed-3',
+    projectId: 'YFG-2023-005',
+    invitedBy: 'Dr. Sofia Garcia',
+    invitedTo: 'Dr. Juan Dela Cruz',
+    status: 'Pending',
+    hoursAgo: 72,
+  },
+];

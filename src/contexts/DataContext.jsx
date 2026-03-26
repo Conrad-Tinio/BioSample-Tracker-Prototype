@@ -6,6 +6,7 @@ import {
   MOCK_ACTIVITY_INITIAL,
   MOCK_USERS,
   MOCK_PENDING_REQUESTS_INITIAL,
+  MOCK_CO_RESEARCHER_INVITES_INITIAL,
 } from '../data/mockData';
 import { setUserPassword } from '../store/authStore';
 import { generateUserId } from '../utils/userId';
@@ -17,6 +18,12 @@ function generateId(prefix = 'id') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function isoFromHoursAgo(hoursAgo = 0) {
+  const d = new Date();
+  d.setHours(d.getHours() - Number(hoursAgo || 0));
+  return d.toISOString();
+}
+
 export function DataProvider({ children }) {
   const [samples, setSamples] = useState(MOCK_SAMPLES_INITIAL);
   const [organisms, setOrganisms] = useState(MOCK_ORGANISMS);
@@ -26,7 +33,12 @@ export function DataProvider({ children }) {
   const [users, setUsers] = useState(MOCK_USERS.map((u) => ({ ...u, password: undefined })));
   const [activity, setActivity] = useState(MOCK_ACTIVITY_INITIAL);
   const [pendingRequests, setPendingRequests] = useState(MOCK_PENDING_REQUESTS_INITIAL);
-  const [coResearcherInvites, setCoResearcherInvites] = useState([]);
+  const [coResearcherInvites, setCoResearcherInvites] = useState(() =>
+    (MOCK_CO_RESEARCHER_INVITES_INITIAL || []).map((inv) => ({
+      ...inv,
+      createdAt: inv.createdAt || isoFromHoursAgo(inv.hoursAgo),
+    }))
+  );
 
   const addSample = useCallback((sample) => {
     const newSample = {
